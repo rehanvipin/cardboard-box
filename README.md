@@ -1,6 +1,6 @@
 # Cardboard-box when you want to teleport away
 ---
-Lightweight containers for development not deployment.
+Lightweight containers for development not just deployment.
 
 ## Goals
 1. Create Ubuntu linux fs (ULFS) without pre-installation in home directory
