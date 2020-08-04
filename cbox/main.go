@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -15,17 +17,58 @@ import (
 const basefs = "http://cdimage.ubuntu.com/ubuntu-base/releases/16.04/release/ubuntu-base-16.04.6-base-amd64.tar.gz"
 const dirNameLen = 8
 const image = "ubuntu16fs.tar.gz"
+const tagFile = "tags.json"
 
 func main() {
 	switch os.Args[1] {
 	case "run":
+		// Create and execute command on a temporary container
 		run()
 		fmt.Println("Contained")
 	case "child":
+		// Required for run, cannot change hostname without being container
 		child()
+	case "create":
+		// Create a container but do not execute, user can name it if they want
+		register()
+	case "delete":
+		// Delete a particular container
+		// deleteContainer()
 	default:
 		panic("Wrong usage. Use 'run' as argument")
 	}
+}
+
+func register() {
+	// Safety check
+	safeExec(fetch())
+
+	// Check args for custom container name
+	container, _ := create()
+	containerSplit := strings.Split(container, "/")
+	containerTag := containerSplit[len(containerSplit)-1]
+	fmt.Printf("The new container is %v \n", containerTag)
+	if len(os.Args) == 3 {
+		containerTag = os.Args[2]
+	}
+
+	// Save it to the json file
+	home, homerr := os.UserHomeDir()
+	safeExec(homerr)
+	workDir := path.Join(home, ".cbox")
+	tagLoc := path.Join(workDir, tagFile)
+
+	// Load and update json data
+	var locations = make(map[string]string)
+	data, err := ioutil.ReadFile(tagLoc)
+	safeExec(err)
+	safeExec(json.Unmarshal(data, &locations))
+
+	locations[containerTag] = container
+	encoded, _ := json.Marshal(locations)
+
+	safeExec(ioutil.WriteFile(tagLoc, encoded, 0644))
+	fmt.Println(locations)
 }
 
 func run() {

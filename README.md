@@ -1,7 +1,8 @@
-# Cardboard-box when you want to teleport away
+# Cardboard-box for when you want to teleport away
 ---
-Lightweight containers for development not just deployment.  
-Unlike containers, boxes are meant for 'longer'-term usage.
+Lightweight boxes for development not just deployment.  
+Boxes are meant for 'longer'-term usage than usual.  
+Boxes are, in essence, containers.
 
 ## Goals
 1. List all file-systems created on system
