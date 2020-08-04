@@ -4,12 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"os"
 	"os/exec"
 	"path"
 	"strings"
-	"time"
 
 	"golang.org/x/sys/unix"
 )
@@ -53,9 +51,7 @@ func main() {
 }
 
 func list() {
-	home, homerr := os.UserHomeDir()
-	safeExec(homerr)
-	workDir := path.Join(home, ".cbox")
+	workDir := WorkingDir()
 	tagLoc := path.Join(workDir, tagFile)
 
 	var locations = make(map[string]string)
@@ -73,9 +69,7 @@ func list() {
 }
 
 func deleteContainer() {
-	home, homerr := os.UserHomeDir()
-	safeExec(homerr)
-	workDir := path.Join(home, ".cbox")
+	workDir := WorkingDir()
 	tagLoc := path.Join(workDir, tagFile)
 
 	var locations = make(map[string]string)
@@ -104,9 +98,7 @@ func start() {
 	// Commands and tag-name
 	tagName := os.Args[2]
 	// Load json file to check if tag exists
-	home, homerr := os.UserHomeDir()
-	safeExec(homerr)
-	workDir := path.Join(home, ".cbox")
+	workDir := WorkingDir()
 	tagLoc := path.Join(workDir, tagFile)
 
 	var location = make(map[string]string)
@@ -128,14 +120,12 @@ func register() {
 	safeExec(fetch())
 
 	// Save it to the json file
-	home, homerr := os.UserHomeDir()
-	safeExec(homerr)
-	workDir := path.Join(home, ".cbox")
+	workDir := WorkingDir()
 	tagLoc := path.Join(workDir, tagFile)
 
 	// Load and update json data
 	var locations = make(map[string]string)
-	if _, err := os.Stat(tagLoc); os.IsNotExist(err) {
+	if !FileExists(tagLoc) {
 		fmt.Println("Could not find the file")
 		file, _ := os.Create(tagLoc)
 		file.Write([]byte("{}"))
@@ -224,33 +214,12 @@ func child() {
 	}
 }
 
-// Chroot that exits too, to delete directory
-func Chroot(path string) (func() error, error) {
-	root, err := os.Open("/")
-	safeExec(err)
-
-	if err := unix.Chroot(path); err != nil {
-		root.Close()
-		return nil, err
-	}
-
-	return func() error {
-		defer root.Close()
-		if err := root.Chdir(); err != nil {
-			return err
-		}
-		return unix.Chroot(".")
-	}, nil
-}
-
 // create makes a temporary root fs directory
 // returns the path to the directory
 func create() (string, error) {
 	// Unique name for new container root
-	containerName := randRoot(dirNameLen)
-	home, homerr := os.UserHomeDir()
-	safeExec(homerr)
-	workDir := path.Join(home, ".cbox")
+	containerName := RandRoot(dirNameLen)
+	workDir := WorkingDir()
 	// The path where the fs image is stored
 	// FQCN -> fully quailified container name
 	FQCN := path.Join(workDir, containerName)
@@ -260,7 +229,7 @@ func create() (string, error) {
 
 	imagePath := path.Join(workDir, image)
 	// move files from image into directory
-	untarerr := untar(imagePath, FQCN)
+	untarerr := Untar(imagePath, FQCN)
 	safeExec(untarerr)
 
 	// Announce its presence
@@ -269,39 +238,17 @@ func create() (string, error) {
 	return FQCN, nil
 }
 
-// randRoot gives a random directory name for the container root
-func randRoot(n int) string {
-	rand.Seed(time.Now().UnixNano())
-	chars := []rune("abcdefghijklmnopqrstuvwxyz1234567890")
-	c := len(chars)
-	var b strings.Builder
-	for i := 0; i < n; i++ {
-		b.WriteRune(chars[rand.Intn(c)])
-	}
-	return b.String()
-}
-
-// untar extracts the image into the container root
-func untar(src, dest string) error {
-	cmd := exec.Command("tar", "-xf", src, "-C", dest, "--exclude=dev")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
-}
-
 // fetch downloads the base file-system image if necessary
 func fetch() error {
 	// Create directory if necessary ~/.cbox
-	home, homerr := os.UserHomeDir()
-	safeExec(homerr)
-	workDir := path.Join(home, ".cbox")
+	workDir := WorkingDir()
 	mkerr := os.MkdirAll(workDir, 0755)
 	safeExec(mkerr)
 	// The path where the fs image is stored
 	fsStore := path.Join(workDir, image)
 
 	// Skip process if file exists
-	if fileExists(fsStore) {
+	if FileExists(fsStore) {
 		return nil
 	}
 
@@ -311,16 +258,6 @@ func fetch() error {
 	cmd.Stdout = os.Stdout
 
 	return cmd.Run()
-}
-
-// fileExists check if a file with that name exists
-func fileExists(name string) bool {
-	if _, err := os.Stat(name); err != nil {
-		if os.IsNotExist(err) {
-			return false
-		}
-	}
-	return true
 }
 
 func safeExec(e error) {

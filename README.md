@@ -4,15 +4,31 @@ Lightweight boxes for development not just deployment.
 Boxes are meant for 'longer'-term usage than usual.  
 Boxes are, in essence, containers.
 
-## Goals
-1. List all file-systems created on system
-    > ~/.cbox/labels.json => user-provided names to tags
-2. Install executable in /usr/local/bin
-    > Default install in GOPATH
-3. Add utilities
-    > Rename boxes, Boot up particular boxes and purge
-4. Document usage
+## Installation
+1. Install Go:  
+`sudo apt install golang` for Debian based OSes
+2. Clone this repo:  
+Git clone or download and unzip the source code
+3. Build (in the cbox directory):  
+`go build`
+4. Link "cbox" to cardboad-box to call from anywhere
+`ln -s "absoulte-path-of-cardboard-box" /usr/local/bin/cbox`
+
+## Usage
+1. Install as per steps given above:
+    * Elevate privelages - `sudo su`
+2. Run commands on temporary containers:  
+`cbox run /bin/bash` -> Note full path of executable
+!All data files are stored in /root/.cbox/
+3. Create custom box:   
+`cbox create` or a named version `cbox create [your box name]`
+4. List available boxes:  
+`cbox list`
+5. Delete unwanted boxes, use names given in the list:  
+`sudo delete [box1 box2 box3]`
+* For windows, prefix all steps with `wsl`
 
 ## Requirements
 * Go v1.14+
 * amd64 architecture
+* Linux based OS or WSL
