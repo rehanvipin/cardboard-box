@@ -19,7 +19,11 @@ const tagFile = "tags.json"
 
 func main() {
 	if os.Geteuid() != 0 {
-		fmt.Println("Please run as root to avoid problems")
+		fmt.Println("Must run as root. Quitting...")
+		return
+	}
+	if len(os.Args) < 2 {
+		Help()
 		return
 	}
 	switch os.Args[1] {
@@ -46,7 +50,7 @@ func main() {
 	case "list":
 		list()
 	default:
-		panic("Wrong usage. Use 'run' as argument")
+		Help()
 	}
 }
 

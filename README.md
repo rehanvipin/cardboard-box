@@ -24,9 +24,15 @@ Git clone or download and unzip the source code
 `cbox create` or a named version `cbox create [your box name]`
 4. List available boxes:  
 `cbox list`
-5. Delete unwanted boxes, use names given in the list:  
+5. Run commands on created boxes:  
+`cbox start [box-name] [command]`
+6. Delete unwanted boxes, use names given in the list:  
 `sudo delete [box1 box2 box3]`
 * For windows, prefix all steps with `wsl`
+
+## To be added -
+[] Cgroup support  
+[] Network namespace
 
 ## Requirements
 * Go v1.14+

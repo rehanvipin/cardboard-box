@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -65,4 +66,15 @@ func WorkingDir() string {
 	home, homerr := os.UserHomeDir()
 	safeExec(homerr)
 	return path.Join(home, ".cbox")
+}
+
+// Help prints out the usage message for the executable
+func Help() {
+	fmt.Println("Usage: cbox [command] [subcommand / args]")
+	fmt.Println("Command can be one of: [run|create|start|list|delete]")
+	fmt.Println("run - cbox run [absolute path command to run on container]")
+	fmt.Println("create - create new permenant container, args: optional [box-name]")
+	fmt.Println("start - run command on already created container, args: [command]")
+	fmt.Println("list - list all created containers")
+	fmt.Println("delete - delete containers from list + disk, args: [box1-name box2-name ...]")
 }
