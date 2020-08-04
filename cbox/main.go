@@ -23,7 +23,8 @@ func main() {
 	switch os.Args[1] {
 	case "run":
 		// Create and execute command on a temporary container
-		run()
+		container, _ := create()
+		run(container, os.Args[2:], true)
 		fmt.Println("Contained")
 	case "child":
 		// Required for run, cannot change hostname without being container
@@ -31,12 +32,41 @@ func main() {
 	case "create":
 		// Create a container but do not execute, user can name it if they want
 		register()
+	case "start":
+		// Execute a command on an existing container, exit if doesn't exist
+		if len(os.Args) < 4 {
+			fmt.Println("Usage: [cbox] start [box-name] [command]")
+		}
+		start()
 	case "delete":
 		// Delete a particular container
 		// deleteContainer()
 	default:
 		panic("Wrong usage. Use 'run' as argument")
 	}
+}
+
+func start() {
+	// Commands and tag-name
+	tagName := os.Args[2]
+	// Load json file to check if tag exists
+	home, homerr := os.UserHomeDir()
+	safeExec(homerr)
+	workDir := path.Join(home, ".cbox")
+	tagLoc := path.Join(workDir, tagFile)
+
+	var location = make(map[string]string)
+	data, err := ioutil.ReadFile(tagLoc)
+	safeExec(err)
+	safeExec(json.Unmarshal(data, &location))
+
+	boxPath, ok := location[tagName]
+	if !ok {
+		fmt.Printf("The container with the name %v does not exist.\n", tagName)
+		return
+	}
+
+	run(boxPath, os.Args[3:], false)
 }
 
 func register() {
@@ -47,7 +77,7 @@ func register() {
 	container, _ := create()
 	containerSplit := strings.Split(container, "/")
 	containerTag := containerSplit[len(containerSplit)-1]
-	fmt.Printf("The new container is %v \n", containerTag)
+	// fmt.Printf("The new container is %v \n", containerTag)
 	if len(os.Args) == 3 {
 		containerTag = os.Args[2]
 	}
@@ -68,15 +98,23 @@ func register() {
 	encoded, _ := json.Marshal(locations)
 
 	safeExec(ioutil.WriteFile(tagLoc, encoded, 0644))
-	fmt.Println(locations)
 }
 
-func run() {
+func run(containerLoc string, args []string, temporary bool) {
 	fetcherr := fetch()
 	safeExec(fetcherr)
 
+	// Delete container after execution or no?
+	var delContainer string
+	if temporary {
+		delContainer = "delete"
+	} else {
+		delContainer = "preserve"
+	}
+
 	// Run the child process with new namespaces
-	cmd := exec.Command("/proc/self/exe", append([]string{"child"}, os.Args[2:]...)...)
+	cmd := exec.Command("/proc/self/exe",
+		append([]string{"child", containerLoc, delContainer}, args...)...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -90,12 +128,12 @@ func run() {
 
 func child() {
 	// Create new chroot rootfs
-	container, _ := create()
-	containerSplit := strings.Split(container, "/")
-	containerTag := containerSplit[len(containerSplit)-1]
-	fmt.Printf("The new container is %v \n", containerTag)
+	container := os.Args[2]
+	temporary := os.Args[3]
+	// containerSplit := strings.Split(container, "/")
+	// containerTag := containerSplit[len(containerSplit)-1]
 
-	cmd := exec.Command(os.Args[2], os.Args[3:]...)
+	cmd := exec.Command(os.Args[4], os.Args[5:]...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -113,7 +151,10 @@ func child() {
 	safeExec(unix.Unmount("/proc", 0))
 	// Exit the chroot, cannot delete a directory in use
 	safeExec(exit())
-	safeExec(os.RemoveAll(container))
+
+	if temporary == "delete" {
+		safeExec(os.RemoveAll(container))
+	}
 }
 
 // Chroot that exits too, to delete directory
@@ -154,6 +195,9 @@ func create() (string, error) {
 	// move files from image into directory
 	untarerr := untar(imagePath, FQCN)
 	safeExec(untarerr)
+
+	// Announce its presence
+	fmt.Printf("The new container is %v \n", containerName)
 
 	return FQCN, nil
 }
