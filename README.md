@@ -10,9 +10,9 @@ Boxes are, in essence, containers.
 2. Clone this repo:  
 Git clone or download and unzip the source code
 3. Build (in the cbox directory):  
-`go build`
+`go build -o cbox`
 4. Link "cbox" to cardboad-box to call from anywhere
-`ln -s "absoulte-path-of-cardboard-box" /usr/local/bin/cbox`
+`ln -s "absoulte-path-of-cbox" /usr/local/bin/cbox`
 
 ## Usage
 1. Install as per steps given above:
