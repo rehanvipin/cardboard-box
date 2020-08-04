@@ -20,6 +20,10 @@ const image = "ubuntu16fs.tar.gz"
 const tagFile = "tags.json"
 
 func main() {
+	if os.Geteuid() != 0 {
+		fmt.Println("Please run as root to avoid problems")
+		return
+	}
 	switch os.Args[1] {
 	case "run":
 		// Create and execute command on a temporary container
@@ -40,10 +44,60 @@ func main() {
 		start()
 	case "delete":
 		// Delete a particular container
-		// deleteContainer()
+		deleteContainer()
+	case "list":
+		list()
 	default:
 		panic("Wrong usage. Use 'run' as argument")
 	}
+}
+
+func list() {
+	home, homerr := os.UserHomeDir()
+	safeExec(homerr)
+	workDir := path.Join(home, ".cbox")
+	tagLoc := path.Join(workDir, tagFile)
+
+	var locations = make(map[string]string)
+	data, err := ioutil.ReadFile(tagLoc)
+	safeExec(err)
+	safeExec(json.Unmarshal(data, &locations))
+
+	// Loop through locations and print the keys
+	fmt.Println("Containers in storage:")
+	fmt.Println("--------")
+	for k := range locations {
+		fmt.Println(k)
+	}
+	fmt.Println("--------")
+}
+
+func deleteContainer() {
+	home, homerr := os.UserHomeDir()
+	safeExec(homerr)
+	workDir := path.Join(home, ".cbox")
+	tagLoc := path.Join(workDir, tagFile)
+
+	var locations = make(map[string]string)
+	data, err := ioutil.ReadFile(tagLoc)
+	safeExec(err)
+	safeExec(json.Unmarshal(data, &locations))
+
+	for i := range os.Args[2:] {
+		containerName := os.Args[2+i]
+		if _, ok := locations[containerName]; !ok {
+			fmt.Printf("A container with the name %s does not exist\n", containerName)
+			continue
+		}
+		container := locations[containerName]
+		safeExec(os.RemoveAll(container))
+		delete(locations, containerName)
+		fmt.Println("Deleted", containerName)
+	}
+
+	encoded, _ := json.Marshal(locations)
+	safeExec(ioutil.WriteFile(tagLoc, encoded, 0644))
+	fmt.Println("Sucessfully deleted container(s)")
 }
 
 func start() {
@@ -73,15 +127,6 @@ func register() {
 	// Safety check
 	safeExec(fetch())
 
-	// Check args for custom container name
-	container, _ := create()
-	containerSplit := strings.Split(container, "/")
-	containerTag := containerSplit[len(containerSplit)-1]
-	// fmt.Printf("The new container is %v \n", containerTag)
-	if len(os.Args) == 3 {
-		containerTag = os.Args[2]
-	}
-
 	// Save it to the json file
 	home, homerr := os.UserHomeDir()
 	safeExec(homerr)
@@ -90,9 +135,31 @@ func register() {
 
 	// Load and update json data
 	var locations = make(map[string]string)
+	if _, err := os.Stat(tagLoc); os.IsNotExist(err) {
+		fmt.Println("Could not find the file")
+		file, _ := os.Create(tagLoc)
+		file.Write([]byte("{}"))
+		file.Close()
+	}
 	data, err := ioutil.ReadFile(tagLoc)
 	safeExec(err)
 	safeExec(json.Unmarshal(data, &locations))
+
+	if len(os.Args) == 3 {
+		if _, ok := locations[os.Args[2]]; ok {
+			fmt.Println("Tag already exists")
+			return
+		}
+	}
+
+	// Check args for custom container name
+	container, _ := create()
+	containerSplit := strings.Split(container, "/")
+	containerTag := containerSplit[len(containerSplit)-1]
+	// fmt.Printf("The new container is %v \n", containerTag)
+	if len(os.Args) == 3 {
+		containerTag = os.Args[2]
+	}
 
 	locations[containerTag] = container
 	encoded, _ := json.Marshal(locations)
