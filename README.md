@@ -1,17 +1,17 @@
 # Cardboard-box when you want to teleport away
 ---
-Lightweight containers for development not just deployment.
+Lightweight containers for development not just deployment.  
+Unlike containers, boxes are meant for 'longer'-term usage.
 
 ## Goals
-1. Create Ubuntu linux fs (ULFS) without pre-installation in home directory
-    > Save vanilla ULFS in home directory to save download time
-    > ~/.cbox/data/{Ubuntu-wsl}.tar.gz
-2. List all file-systems created on system
-    > ~/.cbox/labels.json => tags to box mappings
-3. Use ULFS as a container. New ULFS for each container
-    > ~/.cbox/boxes => store different containers
-4. Install executable in /usr/local/bin
+1. List all file-systems created on system
+    > ~/.cbox/labels.json => user-provided names to tags
+2. Install executable in /usr/local/bin
+    > Default install in GOPATH
+3. Add utilities
+    > Rename boxes, Boot up particular boxes and purge
+4. Document usage
 
 ## Requirements
-* Golang v1.14+
+* Go v1.14+
 * amd64 architecture

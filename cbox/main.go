@@ -59,7 +59,8 @@ func child() {
 
 	// Set properties
 	safeExec(unix.Sethostname([]byte("container")))
-	safeExec(unix.Chroot(container))
+	exit, chrootError := Chroot(container)
+	safeExec(chrootError)
 	safeExec(unix.Chdir("/"))
 	safeExec(unix.Mount("proc", "proc", "proc", 0, ""))
 
@@ -67,7 +68,28 @@ func child() {
 
 	// Clean up
 	safeExec(unix.Unmount("/proc", 0))
+	// Exit the chroot, cannot delete a directory in use
+	safeExec(exit())
 	safeExec(os.RemoveAll(container))
+}
+
+// Chroot that exits too, to delete directory
+func Chroot(path string) (func() error, error) {
+	root, err := os.Open("/")
+	safeExec(err)
+
+	if err := unix.Chroot(path); err != nil {
+		root.Close()
+		return nil, err
+	}
+
+	return func() error {
+		defer root.Close()
+		if err := root.Chdir(); err != nil {
+			return err
+		}
+		return unix.Chroot(".")
+	}, nil
 }
 
 // create makes a temporary root fs directory
