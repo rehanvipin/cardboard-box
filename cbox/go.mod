@@ -1,5 +1,5 @@
-module github.com/rehanvipin/cardboard-box
+module cbox
 
 go 1.14
 
-require golang.org/x/sys v0.0.0-20200803210538-64077c9b5642
+require golang.org/x/sys v0.0.0-20200806125547-5acd03effb82

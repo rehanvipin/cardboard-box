@@ -7,7 +7,10 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
+	"strconv"
 	"strings"
+	"syscall"
 
 	"golang.org/x/sys/unix"
 )
@@ -17,11 +20,19 @@ const dirNameLen = 8
 const image = "ubuntu16fs.tar.gz"
 const tagFile = "tags.json"
 
+// Credential is a replacement for unix.Credential
+type Credential struct {
+	UID         uint32   // User ID.
+	GID         uint32   // Group ID.
+	Groups      []uint32 // Supplementary group IDs.
+	NoSetGroups bool     // If true, don't set supplementary groups
+}
+
 func main() {
-	if os.Geteuid() != 0 {
-		fmt.Println("Must run as root. Quitting...")
-		return
-	}
+	// if os.Geteuid() != 0 {
+	// 	fmt.Println("Must run as root. Quitting...")
+	// 	return
+	// }
 	if len(os.Args) < 2 {
 		Help()
 		return
@@ -57,6 +68,12 @@ func main() {
 func list() {
 	workDir := WorkingDir()
 	tagLoc := path.Join(workDir, tagFile)
+
+	if !FileExists(tagLoc) {
+		file, _ := os.Create(tagLoc)
+		file.Write([]byte("{}"))
+		file.Close()
+	}
 
 	var locations = make(map[string]string)
 	data, err := ioutil.ReadFile(tagLoc)
@@ -130,7 +147,6 @@ func register() {
 	// Load and update json data
 	var locations = make(map[string]string)
 	if !FileExists(tagLoc) {
-		fmt.Println("Could not find the file")
 		file, _ := os.Create(tagLoc)
 		file.Write([]byte("{}"))
 		file.Close()
@@ -180,8 +196,15 @@ func run(containerLoc string, args []string, temporary bool) {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.SysProcAttr = &unix.SysProcAttr{
-		Cloneflags:   unix.CLONE_NEWUTS | unix.CLONE_NEWPID | unix.CLONE_NEWNS,
+		Cloneflags:   unix.CLONE_NEWUTS | unix.CLONE_NEWPID | unix.CLONE_NEWNS | unix.CLONE_NEWUSER,
 		Unshareflags: unix.CLONE_NEWNS,
+		Credential:   &syscall.Credential{Uid: 0, Gid: 0},
+		UidMappings: []syscall.SysProcIDMap{
+			{ContainerID: 0, HostID: os.Getuid(), Size: 1},
+		},
+		GidMappings: []syscall.SysProcIDMap{
+			{ContainerID: 0, HostID: os.Getgid(), Size: 1},
+		},
 	}
 
 	safeExec(cmd.Run())
@@ -198,6 +221,11 @@ func child() {
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+
+	// Cgroups only work as root
+	if os.Geteuid() == 0 {
+		cg()
+	}
 
 	// Set properties
 	safeExec(unix.Sethostname([]byte("container")))
@@ -268,4 +296,14 @@ func safeExec(e error) {
 	if e != nil {
 		panic(e)
 	}
+}
+
+func cg() {
+	cgroups := "/sys/fs/cgroup/"
+	pids := filepath.Join(cgroups, "pids")
+	os.Mkdir(filepath.Join(pids, "cbox"), 0755)
+	safeExec(ioutil.WriteFile(filepath.Join(pids, "cbox/pids.max"), []byte("20"), 0700))
+	// Removes the new cgroup in place after the container exits
+	safeExec(ioutil.WriteFile(filepath.Join(pids, "cbox/notify_on_release"), []byte("1"), 0700))
+	safeExec(ioutil.WriteFile(filepath.Join(pids, "cbox/cgroup.procs"), []byte(strconv.Itoa(os.Getpid())), 0700))
 }
