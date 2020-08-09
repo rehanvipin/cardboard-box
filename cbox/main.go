@@ -70,6 +70,7 @@ func list() {
 	tagLoc := path.Join(workDir, tagFile)
 
 	if !FileExists(tagLoc) {
+		safeExec(fetch())
 		file, _ := os.Create(tagLoc)
 		file.Write([]byte("{}"))
 		file.Close()
@@ -181,17 +182,16 @@ func run(containerLoc string, args []string, temporary bool) {
 	fetcherr := fetch()
 	safeExec(fetcherr)
 
-	// Delete container after execution or no?
-	var delContainer string
-	if temporary {
-		delContainer = "delete"
+	var runAsRoot string
+	if os.Geteuid() == 0 {
+		runAsRoot = "true"
 	} else {
-		delContainer = "preserve"
+		runAsRoot = "false"
 	}
 
 	// Run the child process with new namespaces
 	cmd := exec.Command("/proc/self/exe",
-		append([]string{"child", containerLoc, delContainer}, args...)...)
+		append([]string{"child", containerLoc, runAsRoot}, args...)...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -208,12 +208,16 @@ func run(containerLoc string, args []string, temporary bool) {
 	}
 
 	safeExec(cmd.Run())
+
+	if temporary {
+		safeExec(os.RemoveAll(containerLoc))
+	}
 }
 
 func child() {
 	// Create new chroot rootfs
 	container := os.Args[2]
-	temporary := os.Args[3]
+	runAsRoot := os.Args[3]
 	// containerSplit := strings.Split(container, "/")
 	// containerTag := containerSplit[len(containerSplit)-1]
 
@@ -223,7 +227,7 @@ func child() {
 	cmd.Stderr = os.Stderr
 
 	// Cgroups only work as root
-	if os.Geteuid() == 0 {
+	if runAsRoot == "true" {
 		cg()
 	}
 
@@ -240,15 +244,12 @@ func child() {
 	safeExec(unix.Unmount("/proc", 0))
 	// Exit the chroot, cannot delete a directory in use
 	safeExec(exit())
-
-	if temporary == "delete" {
-		safeExec(os.RemoveAll(container))
-	}
 }
 
 // create makes a temporary root fs directory
 // returns the path to the directory
 func create() (string, error) {
+	safeExec(fetch())
 	// Unique name for new container root
 	containerName := RandRoot(dirNameLen)
 	workDir := WorkingDir()
