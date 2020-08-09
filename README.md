@@ -1,5 +1,5 @@
 # Cardboard-box for when you want to teleport away
----
+
 Lightweight boxes for development not just deployment.  
 Boxes are meant for 'longer'-term usage than usual.  
 Boxes are, in essence, containers.
@@ -32,8 +32,9 @@ Git clone or download and unzip the source code
 * For windows, prefix all steps with `wsl`
 
 ## To be added -
-[X] Cgroup support  
-[ ] Network namespace
+- [x] Cgroup support  
+- [ ] Network namespace
+- [ ] Bind mounts
 
 ## Requirements
 * Go v1.14+
