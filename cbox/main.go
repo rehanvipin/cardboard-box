@@ -231,6 +231,14 @@ func child() {
 		cg()
 	}
 
+	// Mount the current directory in the /work directory of the container
+	mountHost := path.Join(container, "work")
+	safeExec(os.MkdirAll(mountHost, 0755))
+	mnt := exec.Command("mount", "--bind", ".", mountHost)
+	mnt.Stdout = os.Stdout
+	mnt.Stderr = os.Stderr
+	safeExec(mnt.Run())
+
 	// Set properties
 	safeExec(unix.Sethostname([]byte("container")))
 	exit, chrootError := Chroot(container)
@@ -242,6 +250,7 @@ func child() {
 
 	// Clean up
 	safeExec(unix.Unmount("/proc", 0))
+	safeExec(unix.Unmount("/work", 0))
 	// Exit the chroot, cannot delete a directory in use
 	safeExec(exit())
 }

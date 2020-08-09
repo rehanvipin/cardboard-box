@@ -19,7 +19,7 @@ Git clone or download and unzip the source code
     * Elevate privelages (if you want to use resource restrictions) - `sudo su`
     * Continue as current user
 2. Run commands on temporary containers:  
-`cbox run /bin/bash` -> Note full path of executable
+`cbox run /bin/bash` -> Note full path of executable  
 !All data files are stored in /$USER/.cbox/
 3. Create custom box:   
 `cbox create` or a named version `cbox create [your box name]`
@@ -31,12 +31,17 @@ Git clone or download and unzip the source code
 `cbox delete [box1 box2 box3]`
 * For windows, prefix all steps with `wsl`
 
+## Notes
+1. The current directory will be mounted under the `/work` directory during `run`/`start`
+2. Installing packages through apt is not supported as of now
+
 ## To be added -
 - [x] Cgroup support  
 - [ ] Network namespace
-- [ ] Bind mounts
+- [x] Bind mounts
 
 ## Requirements
 * Go v1.14+
 * amd64 architecture
 * Linux based OS or WSL
+* Internet connection for initial downloads
