@@ -7,7 +7,8 @@ Boxes are, in essence, containers.
 ## Installation
 1. [Install Go](https://golang.org/doc/install)
 2. Clone this repo:  
-Git clone or download and unzip the source code
+  - Git clone or download and unzip the source code  
+  - Download a release from the releases
 3. Fetch dependencies and build (in the cbox directory):  
 `go get`  
 `go build`
@@ -16,8 +17,8 @@ Git clone or download and unzip the source code
 
 ## Usage
 1. Install as per steps given above:
-    * Elevate privelages (if you want to use resource restrictions) - `sudo su`
-    * Continue as current user
+    * Continue as current user and continue to the next step  
+    * Elevate priveleges (if you want to use resource restrictions) - `sudo su`
 2. Run commands on temporary containers:  
 `cbox run /bin/bash` -> Note full path of executable  
 !All data files are stored in /$USER/.cbox/
